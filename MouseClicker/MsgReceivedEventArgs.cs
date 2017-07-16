@@ -7,7 +7,7 @@ namespace MouseClicker
     /// </summary>
     public class MsgReceivedEventArgs: EventArgs
     {
-        public int msg { get; set; }
+        public int Msg { get; set; }
 
         /// <summary>
         /// initializer
@@ -15,7 +15,7 @@ namespace MouseClicker
         /// <param name="i">message</param>
         public MsgReceivedEventArgs(int i)
         {
-            msg = i;
+            Msg = i;
         }
     }
 }

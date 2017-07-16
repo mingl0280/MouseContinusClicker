@@ -8,6 +8,7 @@ using System.Diagnostics;
 
 namespace MouseClicker
 {
+
     /// <summary>
     /// Keyboard and mouse hooks, and send inputs.
     /// Some codes are from other programmers.
@@ -20,10 +21,8 @@ namespace MouseClicker
 
         //public event MouseEventHandler MouseDownEvent;
 
-        public delegate int HookProc(int nCode, Int32 wParam, IntPtr lParam);
-        static int hKeyboardHook = 0; //initialize keyboard hook handle
 
-
+        static IntPtr hKeyboardHook = IntPtr.Zero; //initialize keyboard hook handle
         //static int hMouseHook = 0; //initialize mouse hook handle
 
 
@@ -31,11 +30,9 @@ namespace MouseClicker
         public const int WH_KEYBOARD_LL = 13;
         //public const int WH_MOUSE_LL = 14;
 
-        HookProc KeyboardHookProcedure; // Store Hook Procedure
-        
+        NativeMethods.HookProc KeyboardHookProcedure; // Store Hook Procedure
+
         //HookProc MouseHookProcedure;
-
-
 
         /// <summary>
         /// Keyboard Hook Structure. See:https://msdn.microsoft.com/en-us/library/windows/desktop/ms644967.aspx
@@ -50,81 +47,16 @@ namespace MouseClicker
             public int dwExtraInfo; // Extra info
         }
 
-        /*
-         
-        [StructLayout(LayoutKind.Sequential)]
-        public class Point
-        {
-            public int X;
-            public int Y;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public class MouseHookStruct
-        {
-            public Point pt;
-            public int hwnd;
-            public int wHitTestCode;
-            public int dwExtraInfo;
-        }
-
-        private static Point CurrentMousePoint;
-        */
-        /// <summary>
-        /// https://msdn.microsoft.com/en-us/library/windows/desktop/ms644990.aspx
-        /// </summary>
-        /// <param name="idHook"></param>
-        /// <param name="lpfn"></param>
-        /// <param name="hInstance"></param>
-        /// <param name="threadId"></param>
-        /// <returns></returns>
-        [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
-        public static extern int SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hInstance, int threadId);
-
-        /// <summary>
-        /// https://msdn.microsoft.com/en-us/library/windows/desktop/ms644993.aspx
-        /// </summary>
-        /// <param name="idHook"></param>
-        /// <returns></returns>
-        [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
-        public static extern bool UnhookWindowsHookEx(int idHook);
-
-        /// <summary>
-        /// https://msdn.microsoft.com/en-us/library/windows/desktop/ms644974.aspx
-        /// </summary>
-        /// <param name="idHook"></param>
-        /// <param name="nCode"></param>
-        /// <param name="wParam"></param>
-        /// <param name="lParam"></param>
-        /// <returns></returns>
-        [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
-        public static extern int CallNextHookEx(int idHook, int nCode, Int32 wParam, IntPtr lParam);
-
-        /// <summary>
-        /// https://msdn.microsoft.com/en-us/library/windows/desktop/ms683183.aspx
-        /// </summary>
-        /// <returns></returns>
-        [DllImport("kernel32.dll")]
-        static extern int GetCurrentThreadId();
-
-        /// <summary>
-        /// Avoid hook failure. see https://msdn.microsoft.com/en-us/library/windows/desktop/ms683199.aspx
-        /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr GetModuleHandle(string name);
-
         public void SetHook()
         {
             // Set Hooks
-            if (hKeyboardHook == 0)
+            if (hKeyboardHook.ToInt32() == 0)
             {
-                KeyboardHookProcedure = new HookProc(KeyboardHookProc);
+                KeyboardHookProcedure = new NativeMethods.HookProc(KeyboardHookProc);
                 //MouseHookProcedure = new HookProc(MouseHookProc);
 
                 //Keyboard Global Hook (Do not need reflection)
-                hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookProcedure, GetModuleHandle(Process.GetCurrentProcess().MainModule.ModuleName), 0);
+                hKeyboardHook = NativeMethods.SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookProcedure, NativeMethods.GetModuleHandle(Process.GetCurrentProcess().MainModule.ModuleName), 0);
 
 
                 //hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProcedure, GetModuleHandle(Process.GetCurrentProcess().MainModule.ModuleName), 0);
@@ -133,7 +65,7 @@ namespace MouseClicker
                 //hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookProcedure, Marshal.GetHINSTANCE(Assembly.GetExecutingAssembly().GetModules()[0]), 0);
 
                 //If SetWindowsHookEx Failed
-                if (hKeyboardHook == 0)
+                if (hKeyboardHook.ToInt32() == 0)
                 {
                     ReleaseKeyboardHook();
                     throw new Exception("安装键盘钩子失败");
@@ -149,10 +81,10 @@ namespace MouseClicker
             bool retKeyboard = true;
             //bool retMouse = true;
 
-            if (hKeyboardHook != 0)
+            if (hKeyboardHook.ToInt32() != 0)
             {
-                retKeyboard = UnhookWindowsHookEx(hKeyboardHook);
-                hKeyboardHook = 0;
+                retKeyboard = NativeMethods.UnhookWindowsHookEx(hKeyboardHook);
+                hKeyboardHook = IntPtr.Zero;
             }/*
             if (hMouseHook != 0)
             {
@@ -163,39 +95,8 @@ namespace MouseClicker
             //if (!(retMouse)) throw new Exception("Unload Mouse Hook Failed!");
         }
 
-        /// <summary>
-        /// See MS Documentation: https://msdn.microsoft.com/en-us/library/windows/desktop/ms646316.aspx
-        /// </summary>
-        /// <param name="uVirtKey"></param>
-        /// <param name="uScanCode"></param>
-        /// <param name="lpbKeyState"></param>
-        /// <param name="lpwTransKey"></param>
-        /// <param name="fuState"></param>
-        /// <returns></returns>
-        [DllImport("user32")]
-        public static extern int ToAscii(int uVirtKey, int uScanCode, byte[] lpbKeyState, byte[] lpwTransKey, int fuState);
-
-        /// <summary>
-        /// Get Keyboard State. See: https://msdn.microsoft.com/en-us/library/windows/desktop/ms646299.aspx
-        /// </summary>
-        /// <param name="pbKeyState"></param>
-        /// <returns></returns>
-        [DllImport("user32")]
-        public static extern int GetKeyboardState(byte[] pbKeyState);
-
-        /// <summary>
-        /// See: https://msdn.microsoft.com/en-us/library/windows/desktop/ms646301.aspx
-        /// </summary>
-        /// <param name="vKey"></param>
-        /// <returns></returns>
-        [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
-        private static extern short GetKeyState(int vKey);
-
         //WM Keyboard Related Consts
-        private const int WM_KEYDOWN = 0x100;
-        private const int WM_KEYUP = 0x101;
-        private const int WM_SYSKEYDOWN = 0x104;
-        private const int WM_SYSKEYUP = 0x105;
+
 
         /// <summary>
         /// Keyboard Hook Listener Callback
@@ -204,13 +105,13 @@ namespace MouseClicker
         /// <param name="wParam"></param>
         /// <param name="lParam"></param>
         /// <returns></returns>
-        private int KeyboardHookProc(int nCode, Int32 wParam, IntPtr lParam)
+        private IntPtr KeyboardHookProc(int nCode, Int32 wParam, IntPtr lParam)
         {
             if ((nCode >= 0) && (KeyDownEvent != null || KeyUpEvent != null || KeyPressEvent != null))
             {
                 KeyboardHookStruct MyKeyboardHookStruct = (KeyboardHookStruct)Marshal.PtrToStructure(lParam, typeof(KeyboardHookStruct));
                 //Key Down
-                if (KeyDownEvent != null && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN))
+                if (KeyDownEvent != null && (wParam == NativeMethods.WM_KEYDOWN || wParam == NativeMethods.WM_SYSKEYDOWN))
                 {
                     Keys keyData = (Keys)MyKeyboardHookStruct.vkCode;
                     KeyEventArgs e = new KeyEventArgs(keyData);
@@ -218,13 +119,13 @@ namespace MouseClicker
                 }
 
                 //Key Press
-                if (KeyPressEvent != null && wParam == WM_KEYDOWN)
+                if (KeyPressEvent != null && wParam == NativeMethods.WM_KEYDOWN)
                 {
                     byte[] keyState = new byte[256];
-                    GetKeyboardState(keyState);
+                    NativeMethods.GetKeyboardState(keyState);
 
                     byte[] inBuffer = new byte[2];
-                    if (ToAscii(MyKeyboardHookStruct.vkCode, MyKeyboardHookStruct.scanCode, keyState, inBuffer, MyKeyboardHookStruct.flags) == 1)
+                    if (NativeMethods.ToAscii(MyKeyboardHookStruct.vkCode, MyKeyboardHookStruct.scanCode, keyState, inBuffer, MyKeyboardHookStruct.flags) == 1)
                     {
                         KeyPressEventArgs e = new KeyPressEventArgs((char)inBuffer[0]);
                         KeyPressEvent(this, e);
@@ -232,7 +133,7 @@ namespace MouseClicker
                 }
 
                 //Key up
-                if (KeyUpEvent != null && (wParam == WM_KEYUP || wParam == WM_SYSKEYUP))
+                if (KeyUpEvent != null && (wParam == NativeMethods.WM_KEYUP || wParam == NativeMethods.WM_SYSKEYUP))
                 {
                     Keys keyData = (Keys)MyKeyboardHookStruct.vkCode;
                     KeyEventArgs e = new KeyEventArgs(keyData);
@@ -241,7 +142,7 @@ namespace MouseClicker
 
             }
             //return true if you want to cancel the message.
-            return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+            return NativeMethods.CallNextHookEx(hKeyboardHook, nCode, (new IntPtr(wParam)), lParam);
         }
 
         /*
@@ -337,30 +238,6 @@ namespace MouseClicker
 
 
         /// <summary>
-        /// Send Input. See:https://msdn.microsoft.com/en-us/library/windows/desktop/ms646310.aspx
-        /// </summary>
-        /// <param name="nInputs"></param>
-        /// <param name="pInputs"></param>
-        /// <param name="cbSize"></param>
-        /// <returns></returns>
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern uint SendInput(uint nInputs, Input[] pInputs, int cbSize);
-
-        /// <summary>
-        /// Format GetLastError data. See: https://msdn.microsoft.com/en-us/library/windows/desktop/ms679351.aspx
-        /// </summary>
-        /// <param name="dwFlags"></param>
-        /// <param name="lpSource"></param>
-        /// <param name="dwMessageId"></param>
-        /// <param name="dwLanguageId"></param>
-        /// <param name="lpBuffer"></param>
-        /// <param name="nSize"></param>
-        /// <param name="Arguments"></param>
-        /// <returns></returns>
-        [DllImport("kernel32.dll")]
-        public static extern uint FormatMessage(uint dwFlags, IntPtr lpSource, uint dwMessageId, uint dwLanguageId, [Out] StringBuilder lpBuffer, uint nSize, IntPtr Arguments);
-
-        /// <summary>
         /// enum version of MOUSEEVENTF_* in C
         /// </summary>
         private enum MouseEventF
@@ -412,7 +289,7 @@ namespace MouseClicker
             if (absolute)
                 i.data.Mouse.dwFlags = i.data.Mouse.dwFlags | (int)MouseEventF.ABSOLUTE;
             Input[] inputs = new Input[] { i };
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(Input)));
+            NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(Input)));
         }
 
         /// <summary>
@@ -453,13 +330,13 @@ namespace MouseClicker
                 inpList.Add(i);
             }
             Input[] iarr = inpList.ToArray();
-            uint ret = SendInput((uint)iarr.Length, iarr, Marshal.SizeOf(new Input()));
+            uint ret = NativeMethods.SendInput((uint)iarr.Length, iarr, Marshal.SizeOf(new Input()));
             if (ret == 0)
             {
                 uint Lerr = (uint)Marshal.GetLastWin32Error();
                 Debug.WriteLine(Lerr);
                 StringBuilder sbuilder = new StringBuilder(2048);
-                FormatMessage(0x1000, IntPtr.Zero, Lerr, 0x0C00, sbuilder, 2048, IntPtr.Zero);
+                NativeMethods.FormatMessage(0x1000, IntPtr.Zero, Lerr, 0x0C00, sbuilder, 2048, IntPtr.Zero);
                 Debug.WriteLine(sbuilder.ToString());
             }
         }
@@ -502,13 +379,13 @@ namespace MouseClicker
                 inpList.Add(i);
             }
             Input[] iarr = inpList.ToArray();
-            uint ret = SendInput((uint)iarr.Length, iarr, Marshal.SizeOf(new Input()));
+            uint ret = NativeMethods.SendInput((uint)iarr.Length, iarr, Marshal.SizeOf(new Input()));
             if (ret == 0)
             {
                 uint Lerr = (uint)Marshal.GetLastWin32Error();
                 Debug.WriteLine(Lerr);
                 StringBuilder sbuilder = new StringBuilder(2048);
-                FormatMessage(0x1000, IntPtr.Zero, Lerr, 0x0C00, sbuilder, 2048, IntPtr.Zero);
+                NativeMethods.FormatMessage(0x1000, IntPtr.Zero, Lerr, 0x0C00, sbuilder, 2048, IntPtr.Zero);
                 Debug.WriteLine(sbuilder.ToString());
             }
         }
@@ -551,16 +428,17 @@ namespace MouseClicker
                 inpList.Add(i);
             }
             Input[] iarr = inpList.ToArray();
-            uint ret = SendInput((uint)iarr.Length, iarr, Marshal.SizeOf(new Input()));
+            uint ret = NativeMethods.SendInput((uint)iarr.Length, iarr, Marshal.SizeOf(new Input()));
             if (ret == 0)
             {
                 uint Lerr = (uint)Marshal.GetLastWin32Error();
                 Debug.WriteLine(Lerr);
                 StringBuilder sbuilder = new StringBuilder(2048);
-                FormatMessage(0x1000, IntPtr.Zero, Lerr, 0x0C00, sbuilder, 2048, IntPtr.Zero);
+                NativeMethods.FormatMessage(0x1000, IntPtr.Zero, Lerr, 0x0C00, sbuilder, 2048, IntPtr.Zero);
                 Debug.WriteLine(sbuilder.ToString());
             }
         }
         #endregion
     }
+
 }

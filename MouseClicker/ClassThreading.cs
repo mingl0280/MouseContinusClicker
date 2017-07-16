@@ -38,7 +38,7 @@ namespace MouseClicker
         /// <param name="e"></param>
         private void OnMsgRevceived(Object sender, MsgReceivedEventArgs e)
         {
-            RunningStatus = e.msg;
+            RunningStatus = e.Msg;
         }
 
         /// <summary>
@@ -79,6 +79,5 @@ namespace MouseClicker
             MsgReceivedEventArgs e = new MsgReceivedEventArgs(i);
             OnMsgRevceivedEvent.Invoke(this, e);
         }
-        
     }
 }
